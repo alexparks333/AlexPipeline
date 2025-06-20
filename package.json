@@ -5,11 +5,13 @@
   "main": "electron/main.js",
   "homepage": "./",
   "scripts": {
-    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\" \"wait-on http://localhost:3000 http://localhost:8000 && npm run electron:dev\"",
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\" \"npm run delay-electron\"",
     "dev:frontend": "cd frontend && npm run dev",
     "dev:backend": "cd backend && python -m uvicorn main:app --reload --host 0.0.0.0 --port 8000",
+    "delay-electron": "ping 127.0.0.1 -n 6 > nul && npm run electron:dev",
     "electron:dev": "cross-env NODE_ENV=development electron .",
     "kill-ports": "taskkill /f /im node.exe /im python.exe /im electron.exe 2>nul & for /f \"tokens=5\" %a in ('netstat -ano ^| findstr :3000 ^| findstr LISTENING') do taskkill /f /pid %a 2>nul & for /f \"tokens=5\" %a in ('netstat -ano ^| findstr :8000 ^| findstr LISTENING') do taskkill /f /pid %a 2>nul & echo VFX Pipeline processes terminated",
+    "kill": "taskkill /f /im node.exe /im python.exe /im electron.exe 2>nul || echo No processes killed",
     "restart": "npm run kill-ports && timeout /t 2 && npm run dev",
     "build": "npm run build:frontend && npm run build:backend",
     "build:frontend": "cd frontend && npm run build",
@@ -64,51 +66,9 @@
         "filter": [
           "**/*",
           "!__pycache__",
-          "!*.pyc",
-          "!data/*.db*"
+          "!*.pyc"
         ]
       }
-    ],
-    "win": {
-      "target": [
-        {
-          "target": "nsis",
-          "arch": [
-            "x64"
-          ]
-        }
-      ],
-      "icon": "assets/icon.ico"
-    },
-    "mac": {
-      "target": [
-        {
-          "target": "dmg",
-          "arch": [
-            "x64",
-            "arm64"
-          ]
-        }
-      ],
-      "icon": "assets/icon.icns"
-    },
-    "linux": {
-      "target": [
-        {
-          "target": "AppImage",
-          "arch": [
-            "x64"
-          ]
-        }
-      ],
-      "icon": "assets/icon.png"
-    },
-    "nsis": {
-      "oneClick": false,
-      "allowElevation": true,
-      "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": true,
-      "createStartMenuShortcut": true
-    }
+    ]
   }
 }
