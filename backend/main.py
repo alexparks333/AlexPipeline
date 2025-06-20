@@ -1,3 +1,4 @@
+# backend/main.py (FIXED - Updated to use project_metadata relationship)
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
@@ -25,7 +26,7 @@ app = FastAPI(title="VFX Pipeline Companion API", version="1.0.0")
 # CORS middleware to allow frontend communication
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3004", "http://localhost:3000", "http://127.0.0.1:3004", "http://127.0.0.1:3000"],
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:5173", "http://127.0.0.1:5173"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -46,8 +47,33 @@ def get_db():
 async def health_check():
     return {"status": "healthy", "message": "VFX Pipeline Companion API is running"}
 
+@app.get("/")
+async def root():
+    """Root endpoint for wait-on and health checks"""
+    return {
+        "message": "VFX Pipeline Companion API",
+        "status": "running",
+        "version": "1.0.0",
+        "docs": "/docs",
+        "health": "/health"
+    }
 
-# Project endpoints
+@app.get("/")
+@app.head("/")  # Support both GET and HEAD requests for wait-on
+async def root():
+    """Root endpoint for wait-on health checks and general info"""
+    return {
+        "message": "VFX Pipeline Companion API",
+        "status": "running",
+        "version": "1.0.0",
+        "docs": "/docs",
+        "health": "/health"
+    }
+
+# ===================================================================
+# PROJECT ENDPOINTS
+# ===================================================================
+
 @app.get("/projects", response_model=List[ProjectResponse])
 async def get_projects(db: Session = Depends(get_db)):
     projects = db.query(Project).all()
@@ -114,15 +140,23 @@ async def delete_project(project_id: int, db: Session = Depends(get_db)):
     return {"message": "Project deleted successfully"}
 
 
-# Project Metadata endpoints
+# ===================================================================
+# PROJECT METADATA ENDPOINTS
+# ===================================================================
+
 @app.get("/projects/{project_id}/metadata", response_model=MetadataResponse)
 async def get_project_metadata(project_id: int, db: Session = Depends(get_db)):
+    # Check if project exists
+    project = db.query(Project).filter(Project.id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
     metadata = db.query(ProjectMetadata).filter(ProjectMetadata.project_id == project_id).first()
     if not metadata:
         # Return default metadata if none exists
         return MetadataResponse(
             project_id=project_id,
-            client="",
+            client=project.client or "",
             delivery_date=None,
             description="",
             notes="",
@@ -157,7 +191,10 @@ async def update_project_metadata(project_id: int, metadata_update: MetadataUpda
     return metadata
 
 
-# Tool endpoints
+# ===================================================================
+# TOOL ENDPOINTS
+# ===================================================================
+
 @app.get("/tools", response_model=List[ToolResponse])
 async def get_tools(db: Session = Depends(get_db)):
     tools = db.query(Tool).all()
@@ -230,7 +267,10 @@ async def launch_tool(tool_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=f"Failed to launch tool: {str(e)}")
 
 
-# Folder structure templates
+# ===================================================================
+# FOLDER STRUCTURE ENDPOINTS
+# ===================================================================
+
 @app.get("/templates")
 async def get_folder_templates():
     return get_folder_templates()
@@ -249,7 +289,10 @@ async def create_project_folders(project_id: int, folder_data: FolderStructureCr
         raise HTTPException(status_code=500, detail=f"Failed to create folder structure: {str(e)}")
 
 
-# Helper functions
+# ===================================================================
+# HELPER FUNCTIONS
+# ===================================================================
+
 def get_default_workspace():
     """Get the default workspace path"""
     return str(Path.home() / "VFX_Projects")
@@ -284,167 +327,92 @@ def get_folder_templates():
         {
             "type": "tracking",
             "name": "Motion Tracking",
+            "description": "Camera tracking and object tracking projects",
             "folders": [
                 "01_footage",
                 "02_reference",
                 "03_tracking",
                 "04_export",
                 "05_render",
-                "06_delivery",
-                "scripts",
-                "notes"
+                "06_delivery"
             ]
         },
         {
             "type": "houdini_fx",
             "name": "Houdini FX",
+            "description": "Houdini simulations and procedural effects",
             "folders": [
                 "01_assets",
                 "02_cache",
                 "03_hip",
                 "04_render",
                 "05_comp",
-                "06_delivery",
-                "scripts",
-                "reference"
+                "06_delivery"
             ]
         },
         {
             "type": "compositing",
             "name": "Compositing",
+            "description": "Nuke/After Effects compositing projects",
             "folders": [
                 "01_plates",
                 "02_elements",
                 "03_scripts",
                 "04_render",
-                "05_delivery",
-                "reference",
-                "notes"
+                "05_delivery"
             ]
         },
         {
-            "type": "modeling",
-            "name": "3D Modeling",
-            "folders": [
-                "01_concept",
-                "02_modeling",
-                "03_textures",
-                "04_rigging",
-                "05_animation",
-                "06_render",
-                "reference",
-                "export"
-            ]
-        },
-        {
-            "type": "animation",
-            "name": "Animation",
-            "folders": [
-                "01_assets",
-                "02_animation",
-                "03_lighting",
-                "04_render",
-                "05_comp",
-                "06_delivery",
-                "reference",
-                "playblasts"
-            ]
-        },
-        {
-            "type": "general",
+            "type": "general_vfx",
             "name": "General VFX",
+            "description": "General purpose VFX project structure",
             "folders": [
                 "01_assets",
                 "02_footage",
                 "03_work",
                 "04_render",
                 "05_comp",
-                "06_delivery",
-                "reference",
-                "scripts"
+                "06_delivery"
             ]
         }
     ]
 
 
-# Settings endpoints
-@app.get("/settings")
-async def get_settings():
-    """Get application settings"""
-    settings_file = Path("data/settings.json")
-    if settings_file.exists():
-        with open(settings_file, "r") as f:
-            return json.load(f)
-    else:
-        # Return default settings
-        default_settings = {
-            "default_workspace": get_default_workspace(),
-            "tools_directory": str(Path.home() / "VFX_Tools"),
-            "auto_create_folders": True,
-            "theme": "dark"
-        }
-        return default_settings
-
-
-@app.put("/settings")
-async def update_settings(settings: dict):
-    """Update application settings"""
-    settings_file = Path("data/settings.json")
-    settings_file.parent.mkdir(exist_ok=True)
-
-    with open(settings_file, "w") as f:
-        json.dump(settings, f, indent=2)
-
-    return {"message": "Settings updated successfully", "settings": settings}
-
-
 def get_sample_tools():
-    """Return sample tools for demonstration"""
+    """Return sample tools for development/demo purposes"""
     return [
         {
             "id": 1,
-            "name": "SynthEyes",
-            "description": "Professional camera tracking software",
-            "category": "tracking",
-            "executable_path": "",
+            "name": "Blender",
+            "description": "3D modeling and animation software",
+            "category": "3d",
+            "executable_path": None,
             "is_favorite": True,
-            "last_used": None
+            "last_used": None,
+            "created_at": datetime.utcnow(),
+            "updated_at": datetime.utcnow()
         },
         {
             "id": 2,
-            "name": "Houdini",
-            "description": "3D animation and VFX software",
-            "category": "modeling",
-            "executable_path": "",
-            "is_favorite": True,
-            "last_used": None
+            "name": "DaVinci Resolve",
+            "description": "Video editing and color grading",
+            "category": "editing",
+            "executable_path": None,
+            "is_favorite": False,
+            "last_used": None,
+            "created_at": datetime.utcnow(),
+            "updated_at": datetime.utcnow()
         },
         {
             "id": 3,
-            "name": "Nuke",
-            "description": "Professional compositing software",
-            "category": "compositing",
-            "executable_path": "",
-            "is_favorite": False,
-            "last_used": None
-        },
-        {
-            "id": 4,
-            "name": "File Converter",
-            "description": "Batch file format conversion utility",
-            "category": "utility",
-            "executable_path": "",
-            "is_favorite": False,
-            "last_used": None
-        },
-        {
-            "id": 5,
-            "name": "Custom Export Script",
-            "description": "Automated asset export pipeline",
-            "category": "custom",
-            "executable_path": "",
-            "is_favorite": False,
-            "last_used": None
+            "name": "PFTrack",
+            "description": "Camera tracking software",
+            "category": "tracking",
+            "executable_path": None,
+            "is_favorite": True,
+            "last_used": None,
+            "created_at": datetime.utcnow(),
+            "updated_at": datetime.utcnow()
         }
     ]
 

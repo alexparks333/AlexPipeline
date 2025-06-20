@@ -1,7 +1,6 @@
-// frontend/src/components/ProjectCreator.jsx
+// frontend/src/components/CreateProjectModal.jsx
 import React, { useState } from 'react'
 import { X, Folder } from 'lucide-react'
-import { projectService } from '../services/api'
 
 const PROJECT_TYPES = [
   {
@@ -30,7 +29,7 @@ const PROJECT_TYPES = [
   }
 ]
 
-function ProjectCreator({ onProjectCreated, onClose }) {
+function CreateProjectModal({ isOpen, onClose, onProjectCreated }) {
   const [formData, setFormData] = useState({
     name: '',
     type: 'general_vfx',
@@ -39,6 +38,8 @@ function ProjectCreator({ onProjectCreated, onClose }) {
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+
+  if (!isOpen) return null
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -50,8 +51,30 @@ function ProjectCreator({ onProjectCreated, onClose }) {
     try {
       setLoading(true)
       setError('')
-      const project = await projectService.createProject(formData)
+
+      const response = await fetch('http://localhost:8000/projects', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData)
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to create project')
+      }
+
+      const project = await response.json()
       onProjectCreated(project)
+
+      // Reset form
+      setFormData({
+        name: '',
+        type: 'general_vfx',
+        client: '',
+        workspacePath: ''
+      })
+      onClose()
     } catch (error) {
       setError(error.message || 'Failed to create project')
     } finally {
@@ -68,7 +91,7 @@ function ProjectCreator({ onProjectCreated, onClose }) {
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div className="bg-gray-800 rounded-lg p-6 w-full max-w-md mx-4">
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-semibold">Create New Project</h3>
+          <h3 className="text-lg font-semibold text-white">Create New Project</h3>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-white"
@@ -80,19 +103,19 @@ function ProjectCreator({ onProjectCreated, onClose }) {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-2">Project Name</label>
+            <label className="block text-sm font-medium mb-2 text-white">Project Name</label>
             <input
               type="text"
               value={formData.name}
               onChange={(e) => handleChange('name', e.target.value)}
-              className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="Enter project name"
               disabled={loading}
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-2">Project Type</label>
+            <label className="block text-sm font-medium mb-2 text-white">Project Type</label>
             <div className="grid grid-cols-1 gap-2">
               {PROJECT_TYPES.map((type) => (
                 <label
@@ -115,7 +138,7 @@ function ProjectCreator({ onProjectCreated, onClose }) {
                   <div className="flex items-start gap-3">
                     <span className="text-lg">{type.icon}</span>
                     <div>
-                      <div className="font-medium">{type.name}</div>
+                      <div className="font-medium text-white">{type.name}</div>
                       <div className="text-sm text-gray-400">{type.description}</div>
                     </div>
                   </div>
@@ -125,26 +148,26 @@ function ProjectCreator({ onProjectCreated, onClose }) {
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-2">Client (Optional)</label>
+            <label className="block text-sm font-medium mb-2 text-white">Client (Optional)</label>
             <input
               type="text"
               value={formData.client}
               onChange={(e) => handleChange('client', e.target.value)}
-              className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="Client name"
               disabled={loading}
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-2">
+            <label className="block text-sm font-medium mb-2 text-white">
               Workspace Path (Optional)
             </label>
             <input
               type="text"
               value={formData.workspacePath}
               onChange={(e) => handleChange('workspacePath', e.target.value)}
-              className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="Leave empty for default workspace"
               disabled={loading}
             />
@@ -163,14 +186,14 @@ function ProjectCreator({ onProjectCreated, onClose }) {
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg transition-colors"
+              className="flex-1 bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg transition-colors text-white"
               disabled={loading}
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="flex-1 bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
+              className="flex-1 bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg flex items-center justify-center gap-2 transition-colors disabled:opacity-50 text-white"
               disabled={loading}
             >
               {loading ? (
@@ -192,4 +215,4 @@ function ProjectCreator({ onProjectCreated, onClose }) {
   )
 }
 
-export default ProjectCreator
+export default CreateProjectModal

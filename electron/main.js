@@ -1,94 +1,138 @@
-const { app, BrowserWindow, ipcMain } = require('electron');
-const path = require('path');
-const { spawn } = require('child_process');
+// electron/main.js
+const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron')
+const path = require('path')
+const isDev = process.env.NODE_ENV === 'development'
+const { spawn } = require('child_process')
 
-let mainWindow;
-let backendProcess;
+let mainWindow
+let backendProcess
 
-function createWindow() {
-  mainWindow = new BrowserWindow({
-    width: 1200,
-    height: 800,
-    webPreferences: {
-      nodeIntegration: false,
-      contextIsolation: true,
-      preload: path.join(__dirname, 'preload.js')
-    },
-    icon: path.join(__dirname, '../assets/icon.png'),
-    titleBarStyle: 'default',
-    show: false
-  });
-
-  // In development, load from Vite server
-  if (process.env.NODE_ENV === 'development') {
-    mainWindow.loadURL('http://localhost:3004');
-    mainWindow.webContents.openDevTools();
-  } else {
-    // In production, load from built files
-    mainWindow.loadFile(path.join(__dirname, '../frontend/dist/index.html'));
-  }
-
-  mainWindow.once('ready-to-show', () => {
-    mainWindow.show();
-  });
-
-  mainWindow.on('closed', () => {
-    mainWindow = null;
-  });
-}
-
-function startBackend() {
-  if (process.env.NODE_ENV === 'development') {
-    // In development, backend is started by concurrently
-    return;
+// Backend server management
+function startBackendServer() {
+  if (isDev) {
+    // In development, assume backend is started separately via npm run dev
+    console.log('Development mode: Backend should be started separately')
+    return
   }
 
   // In production, start the Python backend
-  const pythonPath = path.join(__dirname, '../backend/main.py');
-  backendProcess = spawn('python', [pythonPath], {
-    cwd: path.join(__dirname, '../backend')
-  });
+  const backendPath = path.join(__dirname, '..', 'backend', 'main.py')
+  backendProcess = spawn('python', [backendPath], {
+    cwd: path.join(__dirname, '..', 'backend'),
+    stdio: ['ignore', 'pipe', 'pipe']
+  })
 
   backendProcess.stdout.on('data', (data) => {
-    console.log(`Backend: ${data}`);
-  });
+    console.log(`Backend: ${data}`)
+  })
 
   backendProcess.stderr.on('data', (data) => {
-    console.error(`Backend Error: ${data}`);
-  });
+    console.error(`Backend Error: ${data}`)
+  })
+
+  backendProcess.on('close', (code) => {
+    console.log(`Backend process exited with code ${code}`)
+  })
 }
 
+function createWindow() {
+  // Create the browser window
+  mainWindow = new BrowserWindow({
+    width: 1200,
+    height: 800,
+    minWidth: 1000,
+    minHeight: 600,
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      enableRemoteModule: false,
+      preload: path.join(__dirname, 'preload.js')
+    },
+    show: false,
+    titleBarStyle: 'default',
+    icon: path.join(__dirname, '..', 'assets', 'icon.png') // Add your icon here
+  })
+
+  // Load the app
+  if (isDev) {
+    mainWindow.loadURL('http://localhost:3000')
+    // Open DevTools in development
+    mainWindow.webContents.openDevTools()
+  } else {
+    mainWindow.loadFile(path.join(__dirname, '..', 'frontend', 'dist', 'index.html'))
+  }
+
+  // Show window when ready to prevent visual flash
+  mainWindow.once('ready-to-show', () => {
+    mainWindow.show()
+    
+    // Focus on window
+    if (isDev) {
+      mainWindow.focus()
+    }
+  })
+
+  // Handle window closed
+  mainWindow.on('closed', () => {
+    mainWindow = null
+  })
+
+  // Handle external links
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    shell.openExternal(url)
+    return { action: 'deny' }
+  })
+}
+
+// App event handlers
 app.whenReady().then(() => {
-  startBackend();
-  createWindow();
+  startBackendServer()
+  createWindow()
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
-      createWindow();
+      createWindow()
     }
-  });
-});
+  })
+})
 
 app.on('window-all-closed', () => {
-  if (backendProcess) {
-    backendProcess.kill();
-  }
   if (process.platform !== 'darwin') {
-    app.quit();
+    if (backendProcess) {
+      backendProcess.kill()
+    }
+    app.quit()
   }
-});
+})
 
 app.on('before-quit', () => {
   if (backendProcess) {
-    backendProcess.kill();
+    backendProcess.kill()
   }
-});
+})
 
-// IPC handlers for communication with renderer
+// IPC handlers
 ipcMain.handle('get-app-version', () => {
-  return app.getVersion();
-});
+  return app.getVersion()
+})
 
-ipcMain.handle('get-platform', () => {
-  return process.platform;
-});
+ipcMain.handle('show-folder-dialog', async () => {
+  const result = await dialog.showOpenDialog(mainWindow, {
+    properties: ['openDirectory'],
+    title: 'Select Workspace Folder'
+  })
+  return result
+})
+
+ipcMain.handle('show-file-dialog', async (event, options = {}) => {
+  const result = await dialog.showOpenDialog(mainWindow, {
+    properties: ['openFile'],
+    title: options.title || 'Select File',
+    filters: options.filters || []
+  })
+  return result
+})
+
+ipcMain.handle('open-folder', async (event, folderPath) => {
+  shell.openPath(folderPath)
+})

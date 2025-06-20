@@ -1,294 +1,283 @@
-import React, { useState, useEffect } from 'react';
-import { Save, Calendar, User, FileText, Tag } from 'lucide-react';
-import apiService from '../services/apiService';
+// frontend/src/components/ProjectMetadata.jsx
+import React, { useState, useEffect } from 'react'
+import { Save, Calendar, User, Tag, Clock } from 'lucide-react'
+import { projectService } from '../services/api'
 
-const ProjectMetadata = ({ project, onProjectUpdate }) => {
+const STATUS_OPTIONS = [
+  { value: 'in_progress', label: 'In Progress', color: 'bg-blue-500' },
+  { value: 'completed', label: 'Completed', color: 'bg-green-500' },
+  { value: 'on_hold', label: 'On Hold', color: 'bg-yellow-500' },
+  { value: 'cancelled', label: 'Cancelled', color: 'bg-red-500' }
+]
+
+const PRIORITY_OPTIONS = [
+  { value: 'low', label: 'Low', color: 'bg-gray-500' },
+  { value: 'medium', label: 'Medium', color: 'bg-blue-500' },
+  { value: 'high', label: 'High', color: 'bg-orange-500' },
+  { value: 'urgent', label: 'Urgent', color: 'bg-red-500' }
+]
+
+function ProjectMetadata({ project }) {
   const [metadata, setMetadata] = useState({
     client: '',
-    deliveryDate: '',
+    delivery_date: '',
     description: '',
     notes: '',
     tags: [],
     status: 'in_progress',
     priority: 'medium',
-    estimatedHours: '',
-    actualHours: ''
-  });
-  const [isSaving, setIsSaving] = useState(false);
-  const [newTag, setNewTag] = useState('');
+    estimated_hours: 0,
+    actual_hours: 0
+  })
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [newTag, setNewTag] = useState('')
 
   useEffect(() => {
-    if (project) {
-      loadProjectMetadata();
-    }
-  }, [project]);
+    loadMetadata()
+  }, [project.id])
 
-  const loadProjectMetadata = async () => {
-    if (!project) return;
-
+  const loadMetadata = async () => {
     try {
-      const projectMetadata = await apiService.getProjectMetadata(project.id);
-      setMetadata(prev => ({ ...prev, ...projectMetadata }));
+      setLoading(true)
+      const data = await projectService.getProjectMetadata(project.id)
+      setMetadata({
+        ...data,
+        delivery_date: data.delivery_date ? data.delivery_date.split('T')[0] : '',
+        tags: data.tags || []
+      })
     } catch (error) {
-      console.error('Failed to load project metadata:', error);
+      console.error('Failed to load metadata:', error)
+    } finally {
+      setLoading(false)
     }
-  };
+  }
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setMetadata(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
+  const handleSave = async () => {
+    try {
+      setSaving(true)
+      const saveData = {
+        ...metadata,
+        delivery_date: metadata.delivery_date ? new Date(metadata.delivery_date).toISOString() : null
+      }
+      await projectService.updateProjectMetadata(project.id, saveData)
+    } catch (error) {
+      console.error('Failed to save metadata:', error)
+    } finally {
+      setSaving(false)
+    }
+  }
 
-  const handleAddTag = (e) => {
-    e.preventDefault();
+  const handleChange = (field, value) => {
+    setMetadata(prev => ({ ...prev, [field]: value }))
+  }
+
+  const addTag = () => {
     if (newTag.trim() && !metadata.tags.includes(newTag.trim())) {
       setMetadata(prev => ({
         ...prev,
         tags: [...prev.tags, newTag.trim()]
-      }));
-      setNewTag('');
+      }))
+      setNewTag('')
     }
-  };
+  }
 
-  const handleRemoveTag = (tagToRemove) => {
+  const removeTag = (tagToRemove) => {
     setMetadata(prev => ({
       ...prev,
       tags: prev.tags.filter(tag => tag !== tagToRemove)
-    }));
-  };
+    }))
+  }
 
-  const handleSave = async () => {
-    if (!project) return;
-
-    setIsSaving(true);
-    try {
-      const updatedProject = await apiService.updateProjectMetadata(project.id, metadata);
-      onProjectUpdate(updatedProject);
-      console.log('Project metadata saved successfully');
-    } catch (error) {
-      console.error('Failed to save project metadata:', error);
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  if (!project) {
+  if (loading) {
     return (
-      <div className="card p-6 text-center">
-        <FileText className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-        <h3 className="text-lg font-semibold mb-2">No Project Selected</h3>
-        <p className="text-gray-400">
-          Select a project from the Projects tab to view and edit its metadata.
-        </p>
+      <div className="bg-gray-800 rounded-lg p-6">
+        <div className="animate-pulse space-y-4">
+          <div className="h-4 bg-gray-700 rounded w-1/4"></div>
+          <div className="h-4 bg-gray-700 rounded w-1/2"></div>
+          <div className="h-4 bg-gray-700 rounded w-3/4"></div>
+        </div>
       </div>
-    );
+    )
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-semibold">Project Metadata</h2>
-          <p className="text-gray-400">Managing: {project.name}</p>
-        </div>
+    <div className="bg-gray-800 rounded-lg p-6 space-y-6">
+      <div className="flex justify-between items-center">
+        <h3 className="text-lg font-semibold">Project Metadata</h3>
         <button
           onClick={handleSave}
-          disabled={isSaving}
-          className="btn-primary flex items-center space-x-2 disabled:opacity-50"
+          disabled={saving}
+          className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg flex items-center gap-2 transition-colors disabled:opacity-50"
         >
-          <Save className="w-4 h-4" />
-          <span>{isSaving ? 'Saving...' : 'Save Metadata'}</span>
+          {saving ? (
+            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+          ) : (
+            <Save size={16} />
+          )}
+          {saving ? 'Saving...' : 'Save'}
         </button>
       </div>
 
-      <div className="card p-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Basic Information */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold flex items-center space-x-2">
-              <User className="w-5 h-5" />
-              <span>Basic Information</span>
-            </h3>
-
-            <div>
-              <label className="block text-sm font-medium mb-2">Client</label>
-              <input
-                type="text"
-                name="client"
-                value={metadata.client}
-                onChange={handleInputChange}
-                className="input-field w-full"
-                placeholder="Client name"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-2">Delivery Date</label>
-              <input
-                type="date"
-                name="deliveryDate"
-                value={metadata.deliveryDate}
-                onChange={handleInputChange}
-                className="input-field w-full"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-2">Status</label>
-              <select
-                name="status"
-                value={metadata.status}
-                onChange={handleInputChange}
-                className="input-field w-full"
-              >
-                <option value="planning">Planning</option>
-                <option value="in_progress">In Progress</option>
-                <option value="review">In Review</option>
-                <option value="completed">Completed</option>
-                <option value="on_hold">On Hold</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-2">Priority</label>
-              <select
-                name="priority"
-                value={metadata.priority}
-                onChange={handleInputChange}
-                className="input-field w-full"
-              >
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-                <option value="urgent">Urgent</option>
-              </select>
-            </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Basic Information */}
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-2">
+              <User size={16} className="inline mr-2" />
+              Client
+            </label>
+            <input
+              type="text"
+              value={metadata.client}
+              onChange={(e) => handleChange('client', e.target.value)}
+              className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="Client name"
+            />
           </div>
 
-          {/* Project Details */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold flex items-center space-x-2">
-              <FileText className="w-5 h-5" />
-              <span>Project Details</span>
-            </h3>
+          <div>
+            <label className="block text-sm font-medium mb-2">
+              <Calendar size={16} className="inline mr-2" />
+              Delivery Date
+            </label>
+            <input
+              type="date"
+              value={metadata.delivery_date}
+              onChange={(e) => handleChange('delivery_date', e.target.value)}
+              className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
 
-            <div>
-              <label className="block text-sm font-medium mb-2">Description</label>
-              <textarea
-                name="description"
-                value={metadata.description}
-                onChange={handleInputChange}
-                className="input-field w-full h-24 resize-none"
-                placeholder="Project description..."
-              />
-            </div>
+          <div>
+            <label className="block text-sm font-medium mb-2">Status</label>
+            <select
+              value={metadata.status}
+              onChange={(e) => handleChange('status', e.target.value)}
+              className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              {STATUS_OPTIONS.map(option => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-2">Estimated Hours</label>
-                <input
-                  type="number"
-                  name="estimatedHours"
-                  value={metadata.estimatedHours}
-                  onChange={handleInputChange}
-                  className="input-field w-full"
-                  placeholder="0"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-2">Actual Hours</label>
-                <input
-                  type="number"
-                  name="actualHours"
-                  value={metadata.actualHours}
-                  onChange={handleInputChange}
-                  className="input-field w-full"
-                  placeholder="0"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-2 flex items-center space-x-2">
-                <Tag className="w-4 h-4" />
-                <span>Tags</span>
-              </label>
-              <div className="flex flex-wrap gap-2 mb-2">
-                {metadata.tags.map(tag => (
-                  <span
-                    key={tag}
-                    className="bg-vfx-accent px-2 py-1 rounded-full text-xs flex items-center space-x-1"
-                  >
-                    <span>{tag}</span>
-                    <button
-                      onClick={() => handleRemoveTag(tag)}
-                      className="text-white hover:text-gray-300"
-                    >
-                      ×
-                    </button>
-                  </span>
-                ))}
-              </div>
-              <form onSubmit={handleAddTag} className="flex space-x-2">
-                <input
-                  type="text"
-                  value={newTag}
-                  onChange={(e) => setNewTag(e.target.value)}
-                  className="input-field flex-1"
-                  placeholder="Add tag..."
-                />
-                <button type="submit" className="btn-secondary">Add</button>
-              </form>
-            </div>
+          <div>
+            <label className="block text-sm font-medium mb-2">Priority</label>
+            <select
+              value={metadata.priority}
+              onChange={(e) => handleChange('priority', e.target.value)}
+              className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              {PRIORITY_OPTIONS.map(option => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
 
-        {/* Notes Section */}
-        <div className="mt-6 pt-6 border-t border-gray-700">
-          <h3 className="text-lg font-semibold mb-4">Notes</h3>
+        {/* Time Tracking */}
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-2">
+              <Clock size={16} className="inline mr-2" />
+              Estimated Hours
+            </label>
+            <input
+              type="number"
+              value={metadata.estimated_hours}
+              onChange={(e) => handleChange('estimated_hours', parseInt(e.target.value) || 0)}
+              className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              min="0"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-2">
+              <Clock size={16} className="inline mr-2" />
+              Actual Hours
+            </label>
+            <input
+              type="number"
+              value={metadata.actual_hours}
+              onChange={(e) => handleChange('actual_hours', parseInt(e.target.value) || 0)}
+              className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              min="0"
+            />
+          </div>
+
+          {/* Tags */}
+          <div>
+            <label className="block text-sm font-medium mb-2">
+              <Tag size={16} className="inline mr-2" />
+              Tags
+            </label>
+            <div className="flex gap-2 mb-2">
+              <input
+                type="text"
+                value={newTag}
+                onChange={(e) => setNewTag(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && addTag()}
+                className="flex-1 bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="Add tag"
+              />
+              <button
+                onClick={addTag}
+                className="bg-gray-600 hover:bg-gray-500 px-3 py-2 rounded-lg transition-colors"
+              >
+                Add
+              </button>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {metadata.tags.map((tag, index) => (
+                <span
+                  key={index}
+                  className="bg-blue-600 text-sm px-2 py-1 rounded-full flex items-center gap-1"
+                >
+                  {tag}
+                  <button
+                    onClick={() => removeTag(tag)}
+                    className="text-blue-200 hover:text-white"
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Description and Notes */}
+      <div className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium mb-2">Description</label>
           <textarea
-            name="notes"
+            value={metadata.description}
+            onChange={(e) => handleChange('description', e.target.value)}
+            className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            rows="3"
+            placeholder="Project description"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium mb-2">Notes</label>
+          <textarea
             value={metadata.notes}
-            onChange={handleInputChange}
-            className="input-field w-full h-32 resize-none"
-            placeholder="Project notes, progress updates, important information..."
+            onChange={(e) => handleChange('notes', e.target.value)}
+            className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            rows="4"
+            placeholder="Additional notes and comments"
           />
         </div>
       </div>
-
-      {/* Project Statistics */}
-      <div className="card p-6">
-        <h3 className="text-lg font-semibold mb-4">Project Statistics</h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="text-center">
-            <div className="text-2xl font-bold text-vfx-blue">{project.type.replace('_', ' ')}</div>
-            <div className="text-sm text-gray-400">Project Type</div>
-          </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold text-vfx-green">
-              {new Date(project.created_at).toLocaleDateString()}
-            </div>
-            <div className="text-sm text-gray-400">Created</div>
-          </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold text-vfx-purple">
-              {metadata.estimatedHours || '0'}h
-            </div>
-            <div className="text-sm text-gray-400">Estimated</div>
-          </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold text-vfx-accent">
-              {metadata.actualHours || '0'}h
-            </div>
-            <div className="text-sm text-gray-400">Actual</div>
-          </div>
-        </div>
-      </div>
     </div>
-  );
-};
+  )
+}
 
-export default ProjectMetadata;
+export default ProjectMetadata
