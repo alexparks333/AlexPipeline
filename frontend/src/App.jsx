@@ -1,8 +1,9 @@
 // frontend/src/App.jsx - Simplified for VFX Projects
 import React, { useState, useEffect } from 'react';
-import { Folder, Plus, Settings, Play, Star, Clock, Search, ExternalLink, Film } from 'lucide-react';
-import CreateProjectModal from './components/CreateProjectModal';
-import SettingsModal from './components/SettingsModal';
+import { Folder, Plus, Settings, Play, Star, Clock, Search, ExternalLink, Film, Image } from 'lucide-react';
+import CreateProjectModal from './Components/CreateProjectModal';
+import SettingsModal from './Components/SettingsModal';
+import Library from './Components/Library';
 
 // Enhanced ProjectCard component for VFX projects
 const ProjectCard = ({ project }) => {
@@ -292,6 +293,17 @@ function App() {
               <Play className="inline w-4 h-4 mr-2" />
               Tools ({tools.length})
             </button>
+            <button
+              onClick={() => setActiveTab('library')}
+              className={`py-4 px-2 border-b-2 font-medium text-sm ${
+                activeTab === 'library'
+                  ? 'border-blue-500 text-blue-400'
+                  : 'border-transparent text-gray-300 hover:text-white hover:border-gray-300'
+              }`}
+            >
+              <Image className="inline w-4 h-4 mr-2" />
+              Library
+            </button>
           </div>
         </div>
       </nav>
@@ -364,6 +376,12 @@ function App() {
                 </p>
               </div>
             )}
+          </div>
+        )}
+
+        {activeTab === 'library' && (
+          <div className="h-[calc(100vh-200px)]">
+            <Library />
           </div>
         )}
       </main>

@@ -1,6 +1,7 @@
 // frontend/src/components/SettingsModal.jsx - Enhanced Version
 import React, { useState, useEffect } from 'react'
 import { X, Settings, Folder, Save, FolderOpen, AlertCircle, CheckCircle } from 'lucide-react'
+import { settingsService } from '../services/api'
 
 function SettingsModal({ isOpen, onClose }) {
   const [settings, setSettings] = useState({
@@ -30,22 +31,20 @@ function SettingsModal({ isOpen, onClose }) {
 
   const loadSettings = async () => {
     try {
-      const response = await fetch('http://localhost:8000/settings')
-      if (response.ok) {
-        const data = await response.json()
-        setSettings(data)
-      } else {
-        // Set default settings if none exist
-        setSettings({
-          rootPath: 'C:\\Users\\alexh\\Desktop\\AlexParksCreative',
-          autoLaunchElectron: true,
-          darkMode: true,
-          enableNotifications: true
-        })
-      }
+      console.log('Loading settings...')
+      const data = await settingsService.getSettings()
+      console.log('Settings loaded:', data)
+      setSettings(data)
     } catch (error) {
       console.error('Failed to load settings:', error)
-      setError('Failed to load settings')
+      setError('Failed to load settings: ' + error.message)
+      // Set default settings if none exist
+      setSettings({
+        rootPath: '',
+        autoLaunchElectron: true,
+        darkMode: true,
+        enableNotifications: true
+      })
     }
   }
 
@@ -56,20 +55,15 @@ function SettingsModal({ isOpen, onClose }) {
     }
 
     try {
-      const response = await fetch('http://localhost:8000/settings/validate-path', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ path })
-      })
-
-      const data = await response.json()
+      console.log('Validating path:', path)
+      const data = await settingsService.validatePath(path)
+      console.log('Path validation result:', data)
       setPathValidation(data)
     } catch (error) {
+      console.error('Path validation error:', error)
       setPathValidation({
         isValid: false,
-        message: 'Failed to validate path'
+        message: 'Failed to validate path: ' + error.message
       })
     }
   }
@@ -90,18 +84,9 @@ function SettingsModal({ isOpen, onClose }) {
       setError('')
       setSuccess('')
 
-      const response = await fetch('http://localhost:8000/settings', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(settings)
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.detail || 'Failed to save settings')
-      }
+      console.log('Saving settings:', settings)
+      const result = await settingsService.saveSettings(settings)
+      console.log('Settings saved successfully:', result)
 
       setSuccess('Settings saved successfully!')
       setTimeout(() => {
@@ -109,7 +94,8 @@ function SettingsModal({ isOpen, onClose }) {
         onClose()
       }, 1500)
     } catch (error) {
-      setError(error.message || 'Failed to save settings')
+      console.error('Failed to save settings:', error)
+      setError('Failed to save settings: ' + (error.response?.data?.detail || error.message))
     } finally {
       setLoading(false)
     }
@@ -123,14 +109,31 @@ function SettingsModal({ isOpen, onClose }) {
 
   const selectFolder = async () => {
     try {
-      // In a real Electron app, you would use the file dialog
-      // For now, we'll use a simple prompt
-      const path = prompt('Enter the root project path:', settings.rootPath)
-      if (path !== null) {
-        handleChange('rootPath', path)
+      // Use Electron's file dialog if available
+      if (window.electronAPI) {
+        const result = await window.electronAPI.showOpenDialog({
+          title: 'Select Root Project Path',
+          properties: ['openDirectory']
+        });
+        
+        if (!result.canceled && result.filePaths.length > 0) {
+          const path = result.filePaths[0];
+          handleChange('rootPath', path);
+        }
+      } else {
+        // Fallback to prompt for web version
+        const path = prompt('Enter the root project path:', settings.rootPath);
+        if (path !== null) {
+          handleChange('rootPath', path);
+        }
       }
     } catch (error) {
-      console.error('Failed to select folder:', error)
+      console.error('Failed to select folder:', error);
+      // Fallback to prompt
+      const path = prompt('Enter the root project path:', settings.rootPath);
+      if (path !== null) {
+        handleChange('rootPath', path);
+      }
     }
   }
 

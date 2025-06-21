@@ -63,16 +63,37 @@ function createWindow() {
     titleBarStyle: 'default'
   })
 
-  // Load the app - CORRECT URL
-  const url = isDev ? 'http://localhost:3000' : path.join(__dirname, '..', 'frontend', 'dist', 'index.html')
-
-  console.log(`Loading URL: ${url}`)
-
+  // Load the app - try multiple ports for development
+  let url
   if (isDev) {
-    mainWindow.loadURL(url)
-    // Open DevTools in development
-    mainWindow.webContents.openDevTools()
+    // Try multiple ports in order
+    const ports = [3000, 3001, 3002]
+    let currentPortIndex = 0
+    
+    const tryLoadPort = () => {
+      if (currentPortIndex >= ports.length) {
+        console.error('All ports failed to load')
+        return
+      }
+      
+      const port = ports[currentPortIndex]
+      url = `http://localhost:${port}`
+      console.log(`Loading URL: ${url}`)
+      
+      mainWindow.loadURL(url).then(() => {
+        // Open DevTools in development
+        mainWindow.webContents.openDevTools()
+      }).catch((error) => {
+        console.log(`Port ${port} failed, trying next port...`)
+        currentPortIndex++
+        tryLoadPort()
+      })
+    }
+    
+    tryLoadPort()
   } else {
+    url = path.join(__dirname, '..', 'frontend', 'dist', 'index.html')
+    console.log(`Loading URL: ${url}`)
     mainWindow.loadFile(url)
   }
 
@@ -86,6 +107,9 @@ function createWindow() {
   // Handle failed loads
   mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {
     console.error(`Failed to load ${validatedURL}: ${errorDescription} (${errorCode})`)
+    if (isDev && validatedURL.includes('localhost')) {
+      console.log('Page failed to load, this is handled by the port detection logic')
+    }
   })
 
   // Handle window closed
@@ -169,6 +193,19 @@ ipcMain.handle('show-file-dialog', async (event, options = {}) => {
 
 ipcMain.handle('open-folder', async (event, folderPath) => {
   shell.openPath(folderPath)
+})
+
+// File dialog handler
+ipcMain.handle('show-open-dialog', async (event, options) => {
+  try {
+    console.log('File dialog requested with options:', options)
+    const result = await dialog.showOpenDialog(mainWindow, options)
+    console.log('File dialog result:', result)
+    return result
+  } catch (error) {
+    console.error('Error showing open dialog:', error)
+    return { canceled: true, filePaths: [] }
+  }
 })
 
 // Handle any uncaught exceptions

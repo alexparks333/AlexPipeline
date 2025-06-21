@@ -1,14 +1,19 @@
 @echo off
-echo Starting VFX Pipeline Companion...
-echo.
+ECHO "Setting up and starting VFX Pipeline Companion..."
+ECHO "This single command will handle everything for you."
 
-echo [1/3] Cleaning up old processes...
-call npm run kill-ports
+ECHO "Ensuring all dependencies are installed..."
+IF NOT EXIST .venv (
+    ECHO "Python virtual environment not found. Running one-time setup..."
+    ECHO "This might take a few minutes..."
+    npm run setup
+) ELSE (
+    ECHO "Found virtual environment. Updating Node.js packages..."
+    npm install
+)
 
-echo [2/3] Starting all services...
-echo Electron will start automatically in ~6 seconds
-echo.
-echo ⚠️  Keep this window open - Press Ctrl+C to stop all services
-echo.
+ECHO "Launching application..."
+npm start
 
-call npm run dev
+ECHO "Script finished. If the application did not start, check the errors above."
+pause

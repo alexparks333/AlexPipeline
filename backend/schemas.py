@@ -104,3 +104,68 @@ class MetadataResponse(MetadataBase):
 # Folder structure schema
 class FolderStructureCreate(BaseModel):
     template_type: str
+
+
+# Settings schemas
+class Settings(BaseModel):
+    rootPath: str
+    autoLaunchElectron: bool
+    darkMode: bool
+    enableNotifications: bool
+
+
+class PathData(BaseModel):
+    path: str
+
+
+# VFX Project creation schema
+class VFXProjectCreate(BaseModel):
+    name: str
+    client: Optional[str] = None
+    shots: List[str]
+    folderName: str
+    rootPath: str
+
+
+# Library schemas
+class LibraryItem(BaseModel):
+    id: Optional[int] = None
+    name: str
+    path: str
+    preview_path: Optional[str] = None
+    category: str = "hdri"
+    tags: List[str] = []
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+
+class Library(BaseModel):
+    id: Optional[int] = None
+    name: str
+    description: Optional[str] = None
+    category: str = "hdri"
+    items: List[LibraryItem] = []
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+
+class LibraryCreate(BaseModel):
+    name: str
+    description: Optional[str] = None
+    category: str = "hdri"
+
+
+class LibraryItemCreate(BaseModel):
+    name: str
+    path: str
+    preview_path: Optional[str] = None
+    category: str = "hdri"
+    tags: List[str] = []
+
+
+class LibraryItemUpdate(BaseModel):
+    name: Optional[str] = None
+    path: Optional[str] = None
+    preview_path: Optional[str] = None
+    category: Optional[str] = None
+    tags: Optional[List[str]] = None

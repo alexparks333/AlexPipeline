@@ -1,5 +1,7 @@
 const { contextBridge, ipcRenderer } = require('electron')
 
+console.log('Preload script loading...')
+
 // Expose protected methods that allow the renderer process to use
 // the ipcRenderer without exposing the entire object
 contextBridge.exposeInMainWorld('electronAPI', {
@@ -15,25 +17,27 @@ contextBridge.exposeInMainWorld('electronAPI', {
   platform: process.platform,
 
   // Environment
-  isDev: process.env.NODE_ENV === 'development'
+  isDev: process.env.NODE_ENV === 'development',
+
+  // File dialog API
+  showOpenDialog: (options) => {
+    console.log('showOpenDialog called with options:', options)
+    return ipcRenderer.invoke('show-open-dialog', options)
+  },
+  
+  // Settings API
+  getSettings: () => ipcRenderer.invoke('get-settings'),
+  saveSettings: (settings) => ipcRenderer.invoke('save-settings', settings),
+  
+  // Project API
+  createProject: (projectData) => ipcRenderer.invoke('create-project', projectData),
+  getProjects: () => ipcRenderer.invoke('get-projects'),
+  
+  // Library API
+  getLibraries: () => ipcRenderer.invoke('get-libraries'),
+  addLibraryItem: (libraryId, itemData) => ipcRenderer.invoke('add-library-item', libraryId, itemData),
+  updateLibraryItem: (libraryId, itemId, itemData) => ipcRenderer.invoke('update-library-item', libraryId, itemId, itemData),
+  deleteLibraryItem: (libraryId, itemId) => ipcRenderer.invoke('delete-library-item', libraryId, itemId)
 })
 
-// ===================================================================
-// frontend/tailwind.config.js
-/** @type {import('tailwindcss').Config} */
-export default {
-  content: [
-    "./index.html",
-    "./src/**/*.{js,ts,jsx,tsx}",
-  ],
-  theme: {
-    extend: {
-      colors: {
-        gray: {
-          950: '#0a0a0a',
-        }
-      }
-    },
-  },
-  plugins: [],
-}
+console.log('Preload script loaded, electronAPI exposed') 

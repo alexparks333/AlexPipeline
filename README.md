@@ -1,14 +1,82 @@
 // README.md (updated with proper instructions)
 # VFX Pipeline Companion
 
-A desktop application for VFX freelancers to standardize project setup, manage tools, and organize workflows.
+VFX Pipeline Companion is a desktop application designed to help freelance VFX artists manage their projects, tools, and pipeline tasks efficiently.
 
-## ✨ Features
+## Features
 
-- **Project Structure Generator**: Create consistent folder hierarchies for different VFX project types
-- **Tool Launcher**: Centralized access to your VFX applications and custom scripts  
-- **Project Metadata**: Store and manage project information, deadlines, and notes
-- **Cross-Platform**: Built with Electron for Windows, macOS, and Linux support
+- **Project Management**: Create, organize, and track your VFX projects.
+- **Tool Launcher**: Quickly launch your VFX software and project-specific tools.
+- **Task Management**: Keep track of tasks and deadlines for each project.
+- **Cross-Platform**: Runs on Windows, macOS, and Linux.
+
+## Getting Started
+
+Follow these instructions to get a copy of the project up and running on your local machine for development and testing purposes.
+
+### Prerequisites
+
+- [Node.js](https://nodejs.org/) (which includes npm)
+- [Python](https://www.python.org/)
+
+### Setup
+
+1.  **Clone the repository:**
+    ```sh
+    git clone <your-repository-url>
+    cd <repository-folder>
+    ```
+
+2.  **Run the setup script:**
+
+    This will install all the necessary npm packages and set up the Python virtual environment with the required dependencies.
+
+    ```sh
+    npm run setup
+    ```
+
+    If you are on macOS or Linux, the `setup:backend` script might need adjustment. The setup script is configured for Windows. You may need to run the backend setup manually:
+    ```sh
+    # create virtual environment
+    python3 -m venv .venv
+
+    # activate it
+    # On Windows (Git Bash or Powershell)
+    source .venv/Scripts/activate
+    # On macOS/Linux
+    source .venv/bin/activate
+
+    # install python packages
+    pip install -r backend/requirements.txt
+    ```
+
+
+## Usage
+
+To start the application for development, simply run:
+
+```sh
+npm start
+```
+
+This will:
+- Start the Python backend server.
+- Start the React frontend development server.
+- Launch the Electron application.
+
+Alternatively, you can run the `start-dev.bat` script on Windows.
+
+## Available Scripts
+
+- `npm start`: Starts the application in development mode.
+- `npm run kill`: Stops all the running processes (backend, frontend, electron).
+- `npm run restart`: Restarts the application.
+- `npm run setup`: Installs all dependencies for the project.
+- `npm run build`: Builds the frontend and backend for production.
+- `npm run package`: Packages the application for distribution.
+- `npm run clean`: Removes generated files and folders.
+
+Enjoy using VFX Pipeline Companion!
 
 ## 🛠️ Tech Stack
 

@@ -10,6 +10,24 @@ const api = axios.create({
   }
 })
 
+// Settings API
+export const settingsService = {
+  async getSettings() {
+    const response = await api.get('/settings')
+    return response.data
+  },
+
+  async saveSettings(settings) {
+    const response = await api.post('/settings', settings)
+    return response.data
+  },
+
+  async validatePath(path) {
+    const response = await api.post('/settings/validate-path', { path })
+    return response.data
+  }
+}
+
 // Project API
 export const projectService = {
   async getProjects() {
@@ -80,6 +98,39 @@ export const toolService = {
 export const templateService = {
   async getFolderTemplates() {
     const response = await api.get('/templates')
+    return response.data
+  }
+}
+
+// Library API
+export const libraryService = {
+  async getLibraries() {
+    const response = await api.get('/libraries')
+    return response.data
+  },
+
+  async getLibrary(libraryId) {
+    const response = await api.get(`/libraries/${libraryId}`)
+    return response.data
+  },
+
+  async createLibrary(libraryData) {
+    const response = await api.post('/libraries', libraryData)
+    return response.data
+  },
+
+  async addLibraryItem(libraryId, itemData) {
+    const response = await api.post(`/libraries/${libraryId}/items`, itemData)
+    return response.data
+  },
+
+  async updateLibraryItem(libraryId, itemId, itemData) {
+    const response = await api.put(`/libraries/${libraryId}/items/${itemId}`, itemData)
+    return response.data
+  },
+
+  async deleteLibraryItem(libraryId, itemId) {
+    const response = await api.delete(`/libraries/${libraryId}/items/${itemId}`)
     return response.data
   }
 }

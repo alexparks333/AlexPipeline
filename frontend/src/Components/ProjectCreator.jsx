@@ -64,6 +64,38 @@ function ProjectCreator({ onProjectCreated, onClose }) {
     if (error) setError('')
   }
 
+  const selectWorkspaceFolder = async () => {
+    try {
+      // Use Electron's file dialog if available
+      if (window.electronAPI) {
+        const result = await window.electronAPI.showOpenDialog({
+          title: 'Select Workspace Folder',
+          properties: ['openDirectory']
+        });
+        
+        if (!result.canceled && result.filePaths.length > 0) {
+          const path = result.filePaths[0];
+          handleChange('workspacePath', path);
+        }
+      } else {
+        // Fallback to prompt for web version
+        const path = prompt('Enter the workspace folder path:', formData.workspacePath || 'C:\\VFX_Projects');
+        
+        if (path !== null) {
+          handleChange('workspacePath', path);
+        }
+      }
+    } catch (error) {
+      console.error('Error selecting workspace folder:', error);
+      // Fallback to prompt
+      const path = prompt('Enter the workspace folder path:', formData.workspacePath || 'C:\\VFX_Projects');
+      
+      if (path !== null) {
+        handleChange('workspacePath', path);
+      }
+    }
+  }
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div className="bg-gray-800 rounded-lg p-6 w-full max-w-md mx-4">
@@ -140,14 +172,25 @@ function ProjectCreator({ onProjectCreated, onClose }) {
             <label className="block text-sm font-medium mb-2">
               Workspace Path (Optional)
             </label>
-            <input
-              type="text"
-              value={formData.workspacePath}
-              onChange={(e) => handleChange('workspacePath', e.target.value)}
-              className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="Leave empty for default workspace"
-              disabled={loading}
-            />
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={formData.workspacePath}
+                onChange={(e) => handleChange('workspacePath', e.target.value)}
+                className="flex-1 bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="Leave empty for default workspace"
+                disabled={loading}
+              />
+              <button
+                type="button"
+                onClick={selectWorkspaceFolder}
+                className="bg-gray-600 hover:bg-gray-500 px-3 py-2 rounded-lg flex items-center gap-1 text-white transition-colors"
+                disabled={loading}
+              >
+                <Folder size={16} />
+                Browse
+              </button>
+            </div>
             <p className="text-xs text-gray-400 mt-1">
               Default: ~/VFX_Projects
             </p>
